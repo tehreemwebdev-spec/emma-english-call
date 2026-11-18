@@ -31,6 +31,9 @@ function Face({ talk, listen }) {
   );
 }
 const fmt = (s) => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+const SCENARIOS = ['Free talk', 'Daily life', 'Job interview', 'Travel', 'Shopping', 'Office meeting', 'Doctor visit'];
+const sbtn = { border: 0, borderRadius: 12, background: 'var(--g)', color: 'var(--ink)', padding: '9px 16px', cursor: 'pointer', fontSize: 15 };
+const dbtn = { ...sbtn, background: '#fde4e4', color: '#a11' };
 
 export default function Page() {
   const [screen, setScreen] = useState('home');
@@ -45,23 +48,48 @@ export default function Page() {
   const [scenario, setScenario] = useState('Free talk');
   const [hinglish, setHinglish] = useState(true);
   const [voiceOn, setVoiceOn] = useState(true);
+  const [rate, setRate] = useState(0.95);
+  const [saveOn, setSaveOn] = useState(true);
   const [muted, setMuted] = useState(false);
   const [summary, setSummary] = useState(null);
   const [typed, setTyped] = useState('');
+  const [history, setHistory] = useState([]);
+  const [open, setOpen] = useState(null);
+  const [loaded, setLoaded] = useState(false);
   const R = useRef({ inCall: false, busy: false, hist: [], log: [], rec: null, audio: null, timer: null, secs: 0, past: [], deadMic: false });
   const cfg = useRef({});
-  cfg.current = { level, scenario, hinglish, voiceOn, muted };
+  cfg.current = { level, scenario, hinglish, voiceOn, muted, rate, saveOn };
 
   useEffect(() => {
-    try { R.current.past = JSON.parse(localStorage.getItem('emma_past') || '[]'); } catch (e) {}
+    try {
+      const s = JSON.parse(localStorage.getItem('emma_settings') || '{}');
+      if (s.level) setLevel(s.level);
+      if (s.scenario) setScenario(s.scenario);
+      if (typeof s.hinglish === 'boolean') setHinglish(s.hinglish);
+      if (typeof s.voiceOn === 'boolean') setVoiceOn(s.voiceOn);
+      if (typeof s.rate === 'number') setRate(s.rate);
+      if (typeof s.saveOn === 'boolean') setSaveOn(s.saveOn);
+      setHistory(JSON.parse(localStorage.getItem('emma_history') || '[]'));
+      R.current.past = JSON.parse(localStorage.getItem('emma_past') || '[]');
+    } catch (e) {}
+    setLoaded(true);
   }, []);
+  useEffect(() => {
+    if (!loaded) return;
+    try { localStorage.setItem('emma_settings', JSON.stringify({ level, scenario, hinglish, voiceOn, rate, saveOn })); } catch (e) {}
+  }, [loaded, level, scenario, hinglish, voiceOn, rate, saveOn]);
+
+  function persistHistory(n) {
+    setHistory(n);
+    try { localStorage.setItem('emma_history', JSON.stringify(n)); } catch (e) {}
+  }
 
   /* ---------- Emma's voice ---------- */
   function browserSpeak(text) {
     return new Promise((ok) => {
       if (!('speechSynthesis' in window)) return ok();
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'en-US'; u.rate = 0.95; u.onend = u.onerror = ok;
+      u.lang = 'en-US'; u.rate = cfg.current.rate; u.onend = u.onerror = ok;
       speechSynthesis.cancel(); speechSynthesis.speak(u);
     });
   }
@@ -75,7 +103,7 @@ export default function Page() {
       if (res.ok) {
         const url = URL.createObjectURL(await res.blob());
         await new Promise((done) => {
-          const a = new Audio(url); r.audio = a;
+          const a = new Audio(url); r.audio = a; a.playbackRate = Math.min(1.3, Math.max(0.7, cfg.current.rate / 0.95));
           a.onended = a.onerror = () => { URL.revokeObjectURL(url); done(); };
           a.play().catch(done);
         });
@@ -166,7 +194,14 @@ export default function Page() {
     if (r.audio) { try { r.audio.pause(); } catch (e) {} }
     try { speechSynthesis.cancel(); } catch (e) {}
     setTalking(false);
-    setSummary({ secs: r.secs, log: [...r.log] });
+    const log = [...r.log];
+    const c = cfg.current;
+    const saved = c.saveOn && log.length > 0;
+    if (saved) {
+      const item = { id: Date.now(), ts: Date.now(), secs: r.secs, level: c.level, scenario: c.scenario, log };
+      persistHistory([item, ...history].slice(0, 30));
+    }
+    setSummary({ secs: r.secs, log, saved });
     setScreen('sum');
   }
   function toggleMute() {
@@ -181,6 +216,11 @@ export default function Page() {
     const t = typed.trim(); if (!t) return;
     setTyped(''); stopListening(); turn(t);
   }
+  function clearMistakes() {
+    R.current.past = [];
+    try { localStorage.removeItem('emma_past'); } catch (e) {}
+    alert('Purani galtiyan bhula di gayi.');
+  }
 
   /* ---------- screens ---------- */
   if (screen === 'home') {
@@ -191,11 +231,60 @@ export default function Page() {
         <div className="vc-stage" style={{ background: 'radial-gradient(120% 80% at 50% 20%,#24406b,#0b1220)', width: 210 }}><Face talk={false} listen={false} /></div>
         <div className="row">
           <select value={level} onChange={(e) => setLevel(e.target.value)}><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select>
-          <select value={scenario} onChange={(e) => setScenario(e.target.value)}>{['Free talk', 'Daily life', 'Job interview', 'Travel', 'Shopping', 'Office meeting', 'Doctor visit'].map((s) => <option key={s}>{s}</option>)}</select>
+          <select value={scenario} onChange={(e) => setScenario(e.target.value)}>{SCENARIOS.map((s) => <option key={s}>{s}</option>)}</select>
         </div>
-        <div className="opts"><label><input type="checkbox" checked={hinglish} onChange={(e) => setHinglish(e.target.checked)} /> Hinglish me samjhao</label></div>
         <button className="call" onClick={startCall}>📞 Call Emma</button>
+        <div className="row" style={{ justifyContent: 'center' }}>
+          <button style={sbtn} onClick={() => setScreen('hist')}>📜 History ({history.length})</button>
+          <button style={sbtn} onClick={() => setScreen('set')}>⚙️ Settings</button>
+        </div>
         <p style={{ fontSize: 13 }}>Headphones lagao, Chrome use karo, aur mic permission Allow karo.</p>
+      </div>
+    );
+  }
+  if (screen === 'set') {
+    return (
+      <div className="scr">
+        <h1>⚙️ Settings</h1>
+        <div className="mi"><b>Level</b><select value={level} onChange={(e) => setLevel(e.target.value)}><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></div>
+        <div className="mi"><b>Scenario</b><select value={scenario} onChange={(e) => setScenario(e.target.value)}>{SCENARIOS.map((s) => <option key={s}>{s}</option>)}</select></div>
+        <div className="mi"><label><input type="checkbox" checked={hinglish} onChange={(e) => setHinglish(e.target.checked)} /> Explanation Hinglish me do</label></div>
+        <div className="mi"><label><input type="checkbox" checked={voiceOn} onChange={(e) => setVoiceOn(e.target.checked)} /> Emma ki awaaz on rakho</label></div>
+        <div className="mi"><b>Awaaz ki speed: {rate.toFixed(2)}</b><input type="range" min="0.6" max="1.2" step="0.05" value={rate} onChange={(e) => setRate(parseFloat(e.target.value))} style={{ width: '100%' }} /></div>
+        <div className="mi"><label><input type="checkbox" checked={saveOn} onChange={(e) => setSaveOn(e.target.checked)} /> Calls History me save karo</label></div>
+        <div className="mi"><button style={sbtn} onClick={clearMistakes}>🧹 Purani galtiyan bhulao</button></div>
+        <div className="mi"><button style={dbtn} onClick={() => { if (confirm('Poori history hata dein?')) persistHistory([]); }}>🗑️ Poori history hatao</button></div>
+        <button style={sbtn} onClick={() => setScreen('home')}>🏠 Home</button>
+      </div>
+    );
+  }
+  if (screen === 'hist') {
+    return (
+      <div className="scr">
+        <h1>📜 Meri History</h1>
+        {!history.length && <p>Abhi koi call save nahi hui. Ek call karo, phir yahan dikhegi.</p>}
+        {history.map((c) => {
+          const bad = c.log.filter((l) => !l.ok).length;
+          return (
+            <div className="mi" key={c.id}>
+              <div onClick={() => setOpen(open === c.id ? null : c.id)} style={{ cursor: 'pointer' }}>
+                <b>{new Date(c.ts).toLocaleString()}</b>
+                <div>{c.scenario} · {c.level} · {fmt(c.secs)} · {c.log.length} sentences · {bad} galtiyan {open === c.id ? '▲' : '▼'}</div>
+              </div>
+              {open === c.id && (
+                <div>
+                  {c.log.map((l, i) => (
+                    <div key={i} style={{ marginTop: 8 }}>
+                      {l.ok ? <div className="f">✅ {l.said}</div> : (<><div className="s">{l.said}</div><div className="f">✅ {l.fix}</div>{l.why && <div>💡 {l.why}</div>}{l.tip && <div>📌 {l.tip}</div>}</>)}
+                    </div>
+                  ))}
+                  <button style={{ ...dbtn, marginTop: 10 }} onClick={() => persistHistory(history.filter((h) => h.id !== c.id))}>🗑️ Ye call hatao</button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <button style={sbtn} onClick={() => setScreen('home')}>🏠 Home</button>
       </div>
     );
   }
@@ -205,13 +294,17 @@ export default function Page() {
       <div className="scr">
         <h1>Call khatam 👏</h1>
         <div className="stats"><div><b>{fmt(summary.secs)}</b>Time</div><div><b>{summary.log.length}</b>Sentences</div><div><b>{bad.length}</b>Galtiyan</div></div>
+        {summary.saved && <p>✅ History me save ho gayi</p>}
         {!summary.log.length && <p>Is baar koi sentence nahi bola. Dobara try karo!</p>}
         {summary.log.length > 0 && !bad.length && <p>Ek bhi galti nahi – shaandaar! 🎉</p>}
         {bad.map((l, i) => (
           <div className="mi" key={i}><div className="s">{l.said}</div><div className="f">✅ {l.fix}</div><div>💡 {l.why}</div>{l.tip && <div>📌 {l.tip}</div>}</div>
         ))}
         <button className="call" onClick={startCall}>📞 Phir se call karo</button>
-        <button className="rb" style={{ width: 'auto', borderRadius: 20, fontSize: 15, padding: '8px 16px', height: 'auto' }} onClick={() => setScreen('home')}>🏠 Home</button>
+        <div className="row" style={{ justifyContent: 'center' }}>
+          <button style={sbtn} onClick={() => setScreen('hist')}>📜 History</button>
+          <button style={sbtn} onClick={() => setScreen('home')}>🏠 Home</button>
+        </div>
       </div>
     );
   }
