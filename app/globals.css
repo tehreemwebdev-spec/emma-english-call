@@ -1,0 +1,43 @@
+:root{--bg:#f4f3ee;--card:#fff;--ink:#1d1d1b;--mut:#6b6a64;--line:#e2e0d8;--acc:#1f9d5c;--ok:#1f7a4d;--okbg:#e6f4ec;--wbg:#fff3df;--red:#d93636;--g:#e9e7e0}
+@media(prefers-color-scheme:dark){:root{--bg:#141413;--card:#1e1e1c;--ink:#f1efe8;--mut:#a3a199;--line:#33322e;--acc:#2fbf78;--ok:#6fd3a1;--okbg:#163226;--wbg:#3a2d12;--g:#2c2b28}}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.scr{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;align-items:center;padding:14px 16px;gap:10px}
+h1{font-size:20px;margin:6px 0 0;text-align:center}p{margin:0;color:var(--mut);text-align:center}
+select,input,button{font:inherit;color:var(--ink)}
+select,input[type=text]{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%}
+.row{display:flex;gap:8px;width:100%}.row select{flex:1}
+.opts{display:flex;gap:14px;font-size:14px;color:var(--mut);align-items:center;flex-wrap:wrap;justify-content:center}
+.opts label{display:flex;align-items:center;gap:5px}
+@keyframes blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+.call{background:var(--acc);color:#fff;border:0;border-radius:40px;padding:14px 34px;font-size:18px;font-weight:700;cursor:pointer}
+.rb{width:64px;height:64px;border-radius:50%;border:0;font-size:26px;cursor:pointer;background:var(--g)}
+.rb.end{background:var(--red);color:#fff}.rb.on{background:var(--ink);color:var(--bg)}
+.tm{font-variant-numeric:tabular-nums;color:var(--mut)}
+.st{font-weight:600;text-align:center;min-height:24px}
+.s{color:var(--mut);text-decoration:line-through}.f{color:var(--ok);font-weight:700}
+.ctl{display:flex;gap:22px;margin-top:auto;padding:8px 0}
+.stats{display:flex;gap:8px;width:100%}.stats div{flex:1;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px}.stats b{display:block;font-size:20px}
+.mi{width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 11px;font-size:14px}
+.typed{display:flex;gap:6px;width:100%}.typed button{border:0;border-radius:10px;background:var(--g);padding:0 14px;cursor:pointer}
+.vc{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;background:radial-gradient(120% 80% at 50% 15%,#24406b 0%,#0b1220 70%);color:#fff;padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom);overflow-y:auto}
+.vc-top{width:100%;max-width:460px;display:flex;justify-content:space-between;padding:10px 2px;font-weight:600}
+.vc .tm{color:#cfe0ff}
+.vc-stage{width:min(76vw,300px);margin:4px auto 0;border-radius:28px;padding:6px;transition:box-shadow .25s}
+.vc-stage.listen{box-shadow:0 0 0 3px #38e8a0,0 0 40px #38e8a080}
+.ai{width:100%;height:auto;display:block}
+.ai .head{animation:sway 5s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 90%}
+@keyframes sway{0%,100%{transform:rotate(-1deg) translateY(0)}50%{transform:rotate(1deg) translateY(-3px)}}
+.ai .eyes{transform-box:fill-box;transform-origin:center;animation:blink 4.5s infinite}
+.ai .jaw{transform-box:fill-box}
+.ai .cav{transform-box:fill-box;transform-origin:50% 0;transform:scaleY(.05)}
+.talk .jaw{animation:jaw .24s infinite alternate}.talk .cav{animation:cav .24s infinite alternate}
+@keyframes jaw{to{transform:translateY(7px)}}@keyframes cav{to{transform:scaleY(1)}}
+.ai .ear{stroke:#6cc4ff}.ai.listen .ear{stroke:#38e8a0}
+.vc-over{display:flex;flex-direction:column;gap:6px;align-items:center;width:100%;margin-top:-30px;position:relative;text-align:center}
+.vc-over>div{padding:5px 11px;border-radius:6px;font:700 17px/1.25 Georgia,"Times New Roman",serif;max-width:94%}
+.bad{background:#e11d2a;color:#fff}.good{background:#3ddc3d;color:#052e05}.sub{background:#fff;color:#111}
+.vc .st{color:#cfe0ff;margin-top:8px}
+.vc .info{width:100%;max-width:460px;background:#ffffff14;border:1px solid #ffffff22;border-radius:12px;padding:9px 11px;font-size:14px;display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.vc .typed input{background:#ffffff14;border:1px solid #ffffff2a;color:#fff}.vc .typed button{background:#ffffff22;color:#fff}
+.vc .rb{background:#ffffff22;color:#fff}.vc .rb.end{background:var(--red)}.vc .rb.on{background:#fff;color:#111}
