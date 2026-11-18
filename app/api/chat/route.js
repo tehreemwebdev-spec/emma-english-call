@@ -2,7 +2,7 @@ import { limited } from '../../../lib/limit.js';
 
 export async function POST(req) {
   if (limited(req, 30)) return Response.json({ error: 'rate' }, { status: 429 });
-  if (!process.env.ANTHROPIC_API_KEY) return Response.json({ error: 'no key' }, { status: 500 });
+  if (!process.env.GEMINI_API_KEY) return Response.json({ error: 'no key' }, { status: 500 });
   const { message, history = [], level = 'Beginner', scenario = 'Free talk', hinglish = true, past = [] } = await req.json();
   if (!message || message.length > 500) return Response.json({ error: 'bad input' }, { status: 400 });
 
@@ -16,18 +16,27 @@ If the student's latest sentence has any grammar, word-choice, tense, prepositio
 Student's past mistakes (revise naturally when relevant): ${mist}
 Return ONLY valid JSON, no markdown: {"reply":"","has_mistake":false,"corrected":"","mistake":"","explanation":"","tip":""}`;
 
-  const messages = [...history.map((h) => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: String(h.content || '.') })), { role: 'user', content: message }];
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
+  const contents = [
+    ...history.map((h) => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: String(h.content || '.') }] })),
+    { role: 'user', parts: [{ text: message }] },
+  ];
+  const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL || 'claude-haiku-5-5', max_tokens: 400, system, messages }),
+    headers: { 'content-type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents,
+      generationConfig: { temperature: 0.7, maxOutputTokens: 600, responseMimeType: 'application/json' },
+    }),
   });
+  if (r.status === 429) return Response.json({ error: 'rate' }, { status: 429 });
   if (!r.ok) return Response.json({ error: 'llm failed' }, { status: 502 });
   const data = await r.json();
-  const text = (data.content && data.content[0] && data.content[0].text) || '';
+  const text = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || []).map((p) => p.text || '').join('');
   try {
     return Response.json(JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)));
   } catch (e) {
     return Response.json({ reply: text, has_mistake: false });
   }
-                                                                                                                  }
+    }
