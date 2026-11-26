@@ -1,4 +1,4 @@
-pp'use client';
+'use client';
 import { useEffect, useRef, useState } from 'react';
 
 function Face({ talk, listen }) {
