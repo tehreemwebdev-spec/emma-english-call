@@ -1,4 +1,4 @@
-'use client';
+pp'use client';
 import { useEffect, useRef, useState } from 'react';
 
 function Face({ talk, listen }) {
@@ -125,7 +125,7 @@ export default function Page() {
     if (!SR) { setStatus('Is browser me mic support nahi hai – Chrome use karo, ya neeche type karo'); return; }
     let heard = '';
     const rec = new SR();
-    rec.lang = 'en-IN'; rec.interimResults = true; rec.continuous = false;
+    rec.lang = 'en-IN'; rec.interimResults = false; rec.continuous = false;
     rec.onresult = (e) => { heard = [...e.results].map((x) => x[0].transcript).join(' '); };
     rec.onerror = (e) => {
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { r.deadMic = true; setStatus('Mic permission block hai – address bar me mic Allow karo, ya type karo'); }
