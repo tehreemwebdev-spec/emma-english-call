@@ -56,4 +56,4 @@ Return ONLY valid JSON, no markdown: {"reply":"","has_mistake":false,"corrected"
   } catch (e) {
     return Response.json({ reply: text, has_mistake: false });
   }
-    }
+}
